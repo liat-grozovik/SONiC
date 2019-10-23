@@ -6,6 +6,8 @@ The "ingress_discard_all" counter counts all discard events. This counter counts
 The test assumes all necessary configuration are already pre-configured on the SONIC switch before test runs.
 Destination IP address of the injected packet must be routable to ensure packet was dropped.
 
+[LG] I think you are missing the definition of the feature. The idea that all packets which are dropped due to different blocks in the pipeline will be counted on the relevant l2 interface and not only the L2 drops.
+
 #### Scope
 The purpose of the test is testing of "ingress_discard_all" counter triggering on SONIC system, making sure that specific traffic drops correctly, according to sent packet and configured packet discards.
 Supported topologies:
@@ -18,21 +20,29 @@ ptf32
 Command to check "ingress_discard_all" counter value:
 ```show interfaces counters```
 
+[LG] For those that are L3 drops i think you should verify also RIF counters.
+
 Check field:
 ```RX_DRP```
 
 #### General test flow
 Inject packet into tor port. Set specifc MAC or IP addresses to BGP route learned on spine ports. Check "ingress_discard_all" counter incremented. Check the packet was dropped on spine port.
 
+[LG] why only TOR port? can't it be any port? can it be LAG port as well? split port? important we will cover them all.
+
 #### Run test
 py.test --inventory ../ansible/inventory --host-pattern [DEVICE] --module-path ../ansible/library/ --testbed [DEVICE-TOPO] --testbed_file ../ansible/testbed.csv --junit-xml=./target/test-reports/ --show-capture=no --log-cli-level debug -ra -vvvvv ingress_discard/test_ingress_discard.py
 
 #### Test cases
 Each test case will be additionally validated by the loganalyzer utility.
-Each test case will run specific traffic to trigger specific discard reasone.
+Each test case will run specific traffic to trigger specific discard reason.
 Pytest fixture - "ptfadapter" is used to construct and send packets.
 After packet is sent using source port index, test framework waits for specific packet did not appear, due to ingress packet drop, on one of the destination port indices.
 
+[LG] Do you have some kind of timeout to wait till the packet is not received before chcking the counters? How many packets you sent from the same drop reason? IMO it should not be one to be sure the counter is working properly
+
+[LG] Before we go deep into each  test cases I suggest you provide a table of all drop reasons. For each specify the group L2, L3, etc and if it is must to be covered in the test. If this is a L3 I think you should check not just the show interface but also show rif counters. Also i think you should focus on what is relevant to SONiC and not general. I am not sure you can reach all the drops in SONiC. For example: no need to refer to MPLS which is not supported. Not sure also about IGMP this is MC. i beleive there are more and SONiC should focus on SONiC while SDK should focus on all.
+ 
 #### Test case #1
 Test objective
 Verify packet drops when SMAC and DMAC are equal.
@@ -50,6 +60,8 @@ Test steps
 - PTF host will send IP packet specifying identical src and dst MAC.
 - When packet reaches SONIC DUT, it should be dropped by "SAI_IN_DROP_REASON_SMAC_EQUALS_DMAC"
 - Verify "ingress_discard_all" counter increment
+
+[LG] you are going to check the show interface only, right? how you will know this was the only reason and not as of another reason?
 
 #### Test case #2
 Test objective
